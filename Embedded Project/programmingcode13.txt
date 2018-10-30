@@ -1,0 +1,214 @@
+4.2 PROGRAMMING CODE:
+#include<reg52.h>
+#include<intrins.h>
+#include<string.h>
+#define ldata P1
+sbit rs=P1^4;
+sbit rw=P1^5;
+sbit en=P1^6;
+sbit enroll=P2^0;
+sbit update=P2^1;
+void command(unsigned char);
+void lcddata(unsigned char);
+void serialinit(void);
+void start(void);
+void write(unsigned char ,unsigned char);
+unsigned char read(unsigned char);
+void ptos(unsigned char );
+void stop(void);
+void delay(unsigned char);
+void lcdintl(void);
+void message(unsigned char,unsigned char *);
+void conv(unsigned char x);
+void send_com(unsigned char );
+void send_arr(unsigned char *);
+void cont_write(void);
+void serialstore(void);
+unsigned char compare(unsigned char *,unsigned char *);
+void delay1(unsigned int);
+unsigned char cmd[] = {0x38,0x0E,0x01,0x06,0x83,0};
+unsigned char a=1,i,j,loc=0,check=0,ch,badd=0,count,buffer[14];
+unsigned char id_read1[10],id_read2[10],id_read3[10],id_read4[10],id_read5[10],id[10]; 
+ void main(void)
+{ unsigned char i;
+ lcdintl(); 
+ if(enroll==0)
+ { message(0X80," PLACE THE CARD ");
+  message(0XC0,"   TO  ENROLL   ");
+  serialinit();
+  while(1)
+  { if(ch>=10)
+   { command(0X01);
+	message(0X80,"ENROLLING....  ");
+	delay(100);
+ 	cont_write();
+	message(0X80," PLACE THE CARD ");
+    message(0XC0,"   TO  ENROLL   ");
+   }}//while
+ }//if while(1)
+ { start:
+  message(0X80," PLACE THE CARD ");
+  delay(50);
+  serialinit();
+  delay(50);
+  serialstore();
+  a=compare(id,id_read1);
+  if(a==0)
+  { message(0X80,"  AUTHORISED   ");
+   delay(200);
+   delay(100);
+   goto start; }
+  a=compare(id,id_read2);
+  if(a==0)
+  { message(0X80,"  AUTHORISED   ");
+   delay(200);
+   delay(100);
+   goto start; }
+  a=compare(id,id_read3);
+  if(a==0)
+  { message(0X80,"  AUTHORISED   ");
+   delay(200);
+   delay(100);
+   goto start;
+  }  } }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void send_com(unsigned char arr_ch)
+{ SBUF=arr_ch;
+  while(TI==0);
+  TI=0; }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void send_arr(unsigned char *arr)
+{ unsigned int i=0;
+ while(arr[i]!='\0')
+ {  SBUF=arr[i++];
+  while(TI==0);
+  TI=0;  }
+ send_com(0X0D); }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void serialinit(void)
+{ TMOD = 0X20;
+  TH1  = 0XFD;
+  SCON = 0X50;
+  TR1  = 1; }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void serialstore(void)
+{ unsigned char n=0;  
+  while(n<=9) 
+  { while(RI==0);
+  id[n]= SBUF;
+   n++;   } }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+unsigned char compare(unsigned char *kk,unsigned char *hh)
+{ unsigned char i=0,j=0,e;
+for(e=0;e<=9;e++)
+  {  if(kk[i]==hh[i])
+    {  j=1;                
+	  return j; }
+    else
+	{ i++;
+	  j=0; } }
+  return j; }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void write(unsigned char baddr,unsigned char dat)
+{ start();
+ ptos(0XA0); //device addr in write mode//
+ ptos(baddr); //byte addr//
+ ptos(dat);  //data//
+ stop(); }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+unsigned char read(unsigned char baddr)
+{ unsigned char i,v=0;
+ start();
+ ptos(0XA0); //device addr in write mode//
+ ptos(baddr);  //byte addr//
+ _nop_();
+start();
+ ptos(0XA0+1);  //device addr in read mode//
+SDA=1;
+ for(i=0;i<=7;i++)
+ { SCL=0;
+  _nop_();
+  _nop_();
+  SCL=1;
+v=v<<1; }
+ SCL=0;
+stop();
+ return v; }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void start(void)
+{ SCL=1;
+ SDA=1;
+ _nop_();
+ _nop_();
+ SDA=0;
+ SCL=0; }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void ptos(unsigned char a)
+{ unsigned char i,c;
+ for(i=0;i<=7;i++)
+ { c=a&128;
+  if(c==0)
+	SDA=0;
+Else
+SDA=1;
+a=a<<1; }	
+ SDA=1;
+ _nop_();
+ _nop_();
+ SCL=1;
+ _nop_();
+ _nop_();
+ SCL=0; }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void stop(void)
+{ SDA=0;
+ SCL=1;
+ _nop_();
+ _nop_();
+ SDA=1;
+ SCL=0; }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void delay(unsigned char s)
+{ unsigned char i,j;
+ for(i=0;i<=s;i++)
+ {  for(j=0;j<=250;j++);  }}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void cont_write(void)
+{   loc=read(0);
+  for(count=loc,i=0;i<=9;count++,i++)
+  {   write(count,buffer[i]); }
+  write(0,count);
+  ch=0;  }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void lcdintl(void)
+{   unsigned char i;
+ for(i=0;cmd[i]==0;i++)
+ {    command(cmd[i]);  } }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void command(unsigned char value)
+{   ldata = value;
+  rs = 0;
+  rw = 0;
+  en = 1;
+  delay(5);
+  en = 0;  }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void lcddata(unsigned char value)
+{    ldata = value;
+  rs = 1;
+  rw = 0;
+  en = 1;
+  delay(5);
+  en = 0;    }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void message(unsigned char value,unsigned char d)
+{    unsigned char i;
+ command(value);
+ for(i=0;d[i]!=0;i++)
+ {   lcddata(d[i]);
+  delay(15);                        }}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void delay1(unsigned int g)
+{   unsigned int j,k;
+   for(j=0;j<1275;j++)
+   for(k=0;k<g;k++);    }
